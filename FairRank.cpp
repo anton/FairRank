@@ -174,12 +174,18 @@ int main(int argc, char *argv[])
 
            stringstream ss(str);
            string n1, n2, score;
+           int s[2];
            ss >> n1 >> n2 >> score;
+
+           size_t pos = score.find("-");
+           string token = score.substr(0, pos);
+           istringstream(token) >> s[0];
+           score.erase(0, pos + 1);
+           istringstream(score) >> s[1];
 
            int id1 = GetNameID(n1);
            int id2 = GetNameID(n2);
-           assert(score.size() == 3);
-           int scoreDiff = (score[0]-'0')-(score[2]-'0');
+           int scoreDiff = s[0] - s[1];
 
            allScores[id1][id2].push_back(+scoreDiff);
            allScores[id2][id1].push_back(-scoreDiff);
