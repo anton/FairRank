@@ -124,13 +124,10 @@ Vec UpdatePlayerCertainty(const Vec& ps, const Vec& pc)
 	Vec ret(ps.size(), 0.0);
 	for (int i=0; i<ps.size(); ++i)
 	{
-		//real certSum = 0;
 		for (int j=0; j<ps.size(); ++j)
 		{
-			//certSum += mc(i,j);
 			ret[i] += pc[j] * g_mc(i,j);
 		}
-		//ret[i] /= certSum;
 		ret[i] = pc[i] + CONVERGE_FACTOR * (ret[i] - pc[i]);
 	}
 	NormalizePlayerCertainty(ret);
@@ -150,17 +147,12 @@ class RankComp
 int main(int argc, char *argv[])
 {
 	// Read input
-
-	//*
 	fstream input("data/results");
 	if (!input)
 	{
 		cerr << "input data missing!" << endl;
 		exit(1);
 	}
-	/*/
-	  istream& input = cin;
-	/**/
 
 	map<int, map<int, vector<int> > > allScores;
 
@@ -190,11 +182,6 @@ int main(int argc, char *argv[])
 		allScores[id1][id2].push_back(+scoreDiff);
 		allScores[id2][id1].push_back(-scoreDiff);
 	}
-
-	//cout << "Data read" << endl;
-	//for (map<int, string>::const_iterator it = g_IDToName.begin(); it!=g_IDToName.end(); ++it)
-	//    cout << setw(3) << it->first << " - " << it->second << endl;
-	//cout << endl;
 
 	Mat nmatches(g_nplayers, g_nplayers);
 	Mat divgs(g_nplayers, g_nplayers);
@@ -287,7 +274,6 @@ int main(int argc, char *argv[])
 		ofs << pp[n];
 		ofs.width(20);
 		ofs << pc[n] << endl;
-		//ofs << ofs.setw(g_maxNameLength+2) << g_IDToName[n] << ofs.setw(8) << pp[n] << ofs.setw(9) << pc[n] << endl;
 	}
 	ofs.close();
 
