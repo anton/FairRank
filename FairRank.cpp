@@ -277,15 +277,15 @@ int main(int argc, char *argv[])
 
 	std::ofstream ofs;
 	ofs.open("data/stats");
-	ofs << string(g_maxNameLength+2-4, ' ') << "Name    Rank   Certainty" << endl;
+	ofs << string(g_maxNameLength+2-4, ' ') << "Name                Rank           Certainty" << endl;
 	for (int i=0; i<g_nplayers; ++i)
 	{
 		int n = ranking[i];
 		ofs.width(g_maxNameLength+2);
 		ofs << g_IDToName[n] ;
-		ofs.width(8);
+		ofs.width(20);
 		ofs << pp[n];
-		ofs.width(9);
+		ofs.width(20);
 		ofs << pc[n] << endl;
 		//ofs << ofs.setw(g_maxNameLength+2) << g_IDToName[n] << ofs.setw(8) << pp[n] << ofs.setw(9) << pc[n] << endl;
 	}
@@ -312,10 +312,10 @@ int main(int argc, char *argv[])
 	cout << endl;
 	cout << string(g_maxNameLength+2-4, ' ') << "### Leaderboard ###" << endl;
 	cout << endl;
-	cout << string(g_maxNameLength+2-4, ' ') << "Name    Rank   Certainty" << endl;
+	cout << "  #" << string(g_maxNameLength+2-4, ' ') << "Name    Rank   Certainty" << endl;
 	for (int i=0; i<g_nplayers; ++i)
 	{
 		int n = ranking[i];
-		cout << setw(g_maxNameLength+2) << g_IDToName[n] << setw(8) << pp[n] << setw(9) << pc[n] << endl;
+		cout << setw(3) << i+1 << setw(g_maxNameLength+2) << g_IDToName[n] << setw(8) << setprecision(2) << pp[n] << setw(12) << pc[n] << endl;
 	}
 }
