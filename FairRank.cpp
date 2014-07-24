@@ -260,7 +260,7 @@ int main(int argc, char *argv[])
 
 		if (i%5==0)
 		{
-			cout << "Scores after " << i << " iterations: "; Print(pp); cout << endl;
+			cout << "Scores after " << setw(2) << i << " iterations: "; Print(pp); cout << endl;
 		}
 	}
 
