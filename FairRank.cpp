@@ -275,14 +275,6 @@ int main(int argc, char *argv[])
 		ranking[i] = i;
 	std::sort(ranking.begin(), ranking.end(), RankComp(pp));
 
-	cout << endl;
-	cout << string(g_maxNameLength+2-4, ' ') << "Name    Rank   Certainty" << endl;
-	for (int i=0; i<g_nplayers; ++i)
-	{
-		int n = ranking[i];
-		cout << setw(g_maxNameLength+2) << g_IDToName[n] << setw(8) << pp[n] << setw(9) << pc[n] << endl;
-	}
-
 	std::ofstream ofs;
 	ofs.open("data/stats");
 	ofs << string(g_maxNameLength+2-4, ' ') << "Name    Rank   Certainty" << endl;
@@ -316,4 +308,14 @@ int main(int argc, char *argv[])
 	cout << "Certainty: (how much can we trust the mean match points)" << endl;
 	g_mc.Print();
 	cout << endl;
+
+	cout << endl;
+	cout << string(g_maxNameLength+2-4, ' ') << "### Leaderboard ###" << endl;
+	cout << endl;
+	cout << string(g_maxNameLength+2-4, ' ') << "Name    Rank   Certainty" << endl;
+	for (int i=0; i<g_nplayers; ++i)
+	{
+		int n = ranking[i];
+		cout << setw(g_maxNameLength+2) << g_IDToName[n] << setw(8) << pp[n] << setw(9) << pc[n] << endl;
+	}
 }
