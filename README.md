@@ -36,3 +36,10 @@ Federer    Anton     0-5
 # Example comment
 Edberg     Nickname2 1-0
 ```
+
+Statistics
+----------
+
+When running FairRank statistics will be presented on Standard Output, but also
+a file ``data/stats`` will be written that contains the current leaderboard.
+
