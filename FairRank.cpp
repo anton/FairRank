@@ -53,7 +53,7 @@ class Mat
 
 			os << string(g_maxNameLength+2, ' ');
 			for (int x=0; x<w; ++x)
-				os << setw(g_maxNameLength+1) << g_IDToName[x];
+				os << setw(ew) << g_IDToName[x];
 			os << endl;
 
 			for (int y=0; y<h; ++y)
