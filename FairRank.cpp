@@ -9,7 +9,18 @@
 #include <cassert>
 #include <algorithm>
 
-using namespace std;
+using std::endl;
+using std::cout;
+using std::setw;
+using std::string;
+using std::setprecision;
+using std::vector;
+using std::istringstream;
+using std::stringstream;
+using std::map;
+using std::cerr;
+using std::fstream;
+using std::ostream;
 
 typedef double real;
 
