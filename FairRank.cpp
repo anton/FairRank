@@ -199,22 +199,28 @@ int main()
 			continue;
 
 		stringstream ss(str);
-		string n1, n2, score;
-		int s[2];
-		ss >> n1 >> n2 >> score;
+		string n[4];
+		ss >> n[0] >> n[1] >> n[2] >> n[3];
 
-		size_t pos = score.find("-");
-		string token = score.substr(0, pos);
-		istringstream(token) >> s[0];
-		score.erase(0, pos + 1);
-		istringstream(score) >> s[1];
+		size_t id[4];
+		for (int i=0; i<4; ++i) {
+			id[i] = players.getNameID(n[i]);
+		}
 
-		size_t id1 = players.getNameID(n1);
-		size_t id2 = players.getNameID(n2);
-		int scoreDiff = s[0] - s[1];
+		allScores[id[0]][id[1]].push_back(+1);
+		allScores[id[1]][id[0]].push_back(-1);
+		allScores[id[0]][id[2]].push_back(+2);
+		allScores[id[2]][id[0]].push_back(-2);
+		allScores[id[0]][id[3]].push_back(+3);
+		allScores[id[3]][id[0]].push_back(-3);
 
-		allScores[id1][id2].push_back(+scoreDiff);
-		allScores[id2][id1].push_back(-scoreDiff);
+		allScores[id[1]][id[2]].push_back(+1);
+		allScores[id[2]][id[1]].push_back(-1);
+		allScores[id[1]][id[3]].push_back(+2);
+		allScores[id[3]][id[1]].push_back(-2);
+
+		allScores[id[2]][id[3]].push_back(+1);
+		allScores[id[3]][id[2]].push_back(-1);
 	}
 
 	Mat nmatches(players.size(), players.size());
