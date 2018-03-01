@@ -26,7 +26,6 @@ typedef double real;
 
 const real DIVG_DEFAULT = 5;
 const real DIVG_MIN     = 1;
-const real PC_DEFAULT   = 0.5; // We are quite uncertain of the players scores to begin with (any number between 0 and 1 should do here, just affects convergence)
 
 inline real sqr(real x) { return x*x; }
 
