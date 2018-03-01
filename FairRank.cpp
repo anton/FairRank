@@ -22,127 +22,145 @@ using std::cerr;
 using std::fstream;
 using std::ostream;
 
-typedef double real;
+inline double sqr(double x) { return x*x; }
 
-const real DIVG_DEFAULT = 5;
-const real DIVG_MIN     = 1;
-
-inline real sqr(real x) { return x*x; }
-
-// The names for the players and the id:s
-map<string, int> g_nameToID;
-map<int, string> g_IDToName;
-int g_maxNameLength = 3;
-int g_nplayers = 0;
-
-int GetNameID(string name)
+class Players
 {
-	if (g_nameToID.count(name) == 0)
+      public:
+	Players() : maxNameLength(3), nplayers(0) {}
+
+	int getNameID(string name)
 	{
-		g_IDToName[g_nplayers] = name;
-		g_nameToID[name] = g_nplayers;
-		g_nplayers++;
-		g_maxNameLength = std::max(g_maxNameLength, (int)name.size());
+		if (nameToID.count(name) == 0)
+		{
+			IDToName[nplayers] = name;
+			nameToID[name] = nplayers;
+			nplayers++;
+			maxNameLength = std::max(maxNameLength, (int)name.size());
+		}
+		return nameToID[name];
 	}
-	return g_nameToID[name];
-}
+
+	string getName(int id)
+	{
+		return IDToName[id];
+	}
+
+	int getMaxNameLength() const { return maxNameLength; }
+	int size() const { return nplayers; }
+
+      private:
+	int maxNameLength;
+	int nplayers;
+	// The names for the players and the id:s
+	map<string, int> nameToID;
+	map<int, string> IDToName;
+};
 
 class Mat
 {
-	public:
-		Mat() : w(0), h(0) {}
-		Mat(int w_, int h_) : w(w_), h(h_), vals(w*h, 0.0) {}
-
-		real& operator()(int x, int y)       { return vals[x+y*w]; };
-		real  operator()(int x, int y) const { return vals[x+y*w]; };
-
-		void Print(ostream& os = cout)
-		{
-			int ew = std::max(7, g_maxNameLength+1);
-			int p = 3;
-
-			os << string(g_maxNameLength+2, ' ');
-			for (int x=0; x<w; ++x)
-				os << setw(ew) << g_IDToName[x];
-			os << endl;
-
-			for (int y=0; y<h; ++y)
-			{
-				os << setw(g_maxNameLength+2) << g_IDToName[y];
-				for (int x=0; x<w; ++x)
-				{
-					if ((*this)(x,y) == 0)
-						os << string(ew, ' ');
-					else
-						os << setw(ew) << setprecision(p) << (*this)(x,y);
-				}
-				os << endl;
-			}
-		}
-
-	private:
-		int w, h;
-		vector<real> vals;
+      public:
+	Mat() : w(0), h(0) {}
+	Mat(int w_, int h_) : w(w_), h(h_), vals(w * h, 0.0) {}
+	double &operator()(int x, int y) { return vals[x + y * w]; };
+	double operator()(int x, int y) const { return vals[x + y * w]; };
+	int getW() const { return w; }
+	int getH() const { return h; }
+      private:
+	int w, h;
+	vector<double> vals;
 };
 
-typedef vector<real> Vec;
+typedef vector<double> Vec;
 
-void Print(const Vec& v)
+class Printer
 {
-	int ew = 7;
-	int p = 3;
-	for (int x=0; x<v.size(); ++x)
-		cout << setw(ew) << setprecision(p) << v[x];
-}
-
-// More Globals - yay!
-
-Mat g_mp; // Player skill difference based on average match performance mano-e-mano
-Mat g_mc; // The certainty of the above
-
-const real CONVERGE_FACTOR = 0.45; // Should be in (0, 0.5]. 0.5 is the fastest, but may be a bit over-eager. A lower value relaxes the convergence
-
-Vec UpdatePlayerScores(const Vec& ps, const Vec& pc)
-{
-	Vec ret(ps.size(), 0.0);
-	for (int i=0; i<ps.size(); ++i)
+	public:
+	static void Print(Players &p, const Mat &m, ostream &os = cout)
 	{
-		real certSum = 0;
-		for (int j=0; j<ps.size(); ++j)
+		int ew = std::max(7, p.getMaxNameLength() + 1);
+		int pres = 3;
+		os << string(p.getMaxNameLength() + 2, ' ');
+		for (int x=0; x<m.getW(); ++x)
+			os << setw(ew) << p.getName(x);
+		os << endl;
+
+		for (int y = 0; y < m.getH(); ++y)
 		{
-			real c = pc[j] * g_mc(i,j);
-			certSum += c;
-			ret[i] += c * (ps[j] + g_mp(i,j));
+			os << setw(p.getMaxNameLength() + 2) << p.getName(y);
+			for (int x = 0; x < m.getW(); ++x)
+			{
+				if (m(x, y) == 0)
+					os << string(ew, ' ');
+				else
+					os << setw(ew) << setprecision(pres) << m(x, y);
+			}
+			os << endl;
 		}
-		ret[i] /= certSum;
-		ret[i] = ps[i] + CONVERGE_FACTOR * (ret[i] - ps[i]);
 	}
-	return ret;
-}
 
-void NormalizePlayerCertainty(Vec& pc)
-{
-	real sum = 0;
-	for (int i=0; i<pc.size(); ++i)
-		sum += pc[i];
-	for (int i=0; i<pc.size(); ++i)
-		pc[i] /= sum;
-}
-
-Vec UpdatePlayerCertainty(const Vec& ps, const Vec& pc)
-{
-	Vec ret(ps.size(), 0.0);
-	for (int i=0; i<ps.size(); ++i)
+	static void Print(const Vec& v)
 	{
-		for (int j=0; j<ps.size(); ++j)
-		{
-			ret[i] += pc[j] * g_mc(i,j);
-		}
-		ret[i] = pc[i] + CONVERGE_FACTOR * (ret[i] - pc[i]);
+		int ew = 7;
+		int p = 3;
+		for (int x=0; x<v.size(); ++x)
+			cout << setw(ew) << setprecision(p) << v[x];
 	}
-	NormalizePlayerCertainty(ret);
-	return ret;
-}
+};
+
+class Updater
+{
+      public:
+        Updater(Mat &mp, Mat &mc) : mp(mp), mc(mc) {}
+
+	Vec UpdatePlayerScores(const Vec &ps, const Vec &pc)
+	{
+		Vec ret(ps.size(), 0.0);
+		for (int i = 0; i < ps.size(); ++i)
+		{
+			double certSum = 0;
+			for (int j = 0; j < ps.size(); ++j)
+			{
+				double c = pc[j] * mc(i, j);
+				certSum += c;
+				ret[i] += c * (ps[j] + mp(i, j));
+			}
+			ret[i] /= certSum;
+			ret[i] = ps[i] + CONVERGE_FACTOR * (ret[i] - ps[i]);
+		}
+		return ret;
+	}
+
+	Vec UpdatePlayerCertainty(const Vec &ps, const Vec &pc)
+	{
+		Vec ret(ps.size(), 0.0);
+		for (int i = 0; i < ps.size(); ++i)
+		{
+			for (int j = 0; j < ps.size(); ++j)
+			{
+				ret[i] += pc[j] * mc(i, j);
+			}
+			ret[i] = pc[i] + CONVERGE_FACTOR * (ret[i] - pc[i]);
+		}
+		NormalizePlayerCertainty(ret);
+		return ret;
+	}
+
+	static void NormalizePlayerCertainty(Vec &pc)
+	{
+		double sum = 0;
+		for (int i = 0; i < pc.size(); ++i)
+			sum += pc[i];
+		for (int i = 0; i < pc.size(); ++i)
+			pc[i] /= sum;
+	}
+
+      private:
+	Mat &mp; // Player skill difference based on average match performance mano-e-mano
+	Mat &mc; // The certainty of the above
+
+	const double CONVERGE_FACTOR = 0.45; // Should be in (0, 0.5]. 0.5 is the fastest, but may be a bit over-eager. A lower value relaxes the convergence
+};
 
 class RankComp
 {
@@ -166,6 +184,13 @@ int main(int argc, char *argv[])
 
 	map<int, map<int, vector<int> > > allScores;
 
+	const double DIVG_DEFAULT = 5;
+	const double DIVG_MIN     = 1;
+
+	Players players;
+	Mat mp; // Player skill difference based on average match performance mano-e-mano
+	Mat mc; // The certainty of the above
+
 	for(;;)
 	{
 		string str;
@@ -185,39 +210,39 @@ int main(int argc, char *argv[])
 		score.erase(0, pos + 1);
 		istringstream(score) >> s[1];
 
-		int id1 = GetNameID(n1);
-		int id2 = GetNameID(n2);
+		int id1 = players.getNameID(n1);
+		int id2 = players.getNameID(n2);
 		int scoreDiff = s[0] - s[1];
 
 		allScores[id1][id2].push_back(+scoreDiff);
 		allScores[id2][id1].push_back(-scoreDiff);
 	}
 
-	Mat nmatches(g_nplayers, g_nplayers);
-	Mat divgs(g_nplayers, g_nplayers);
-	g_mp = Mat(g_nplayers, g_nplayers);
-	g_mc = Mat(g_nplayers, g_nplayers);
+	Mat nmatches(players.size(), players.size());
+	Mat divgs(players.size(), players.size());
+	mp = Mat(players.size(), players.size());
+	mc = Mat(players.size(), players.size());
 
-	for (int i=0; i<g_nplayers; ++i)
+	for (int i=0; i<players.size(); ++i)
 	{
-		for (int j=0; j<g_nplayers; ++j)
+		for (int j=0; j<players.size(); ++j)
 		{
 			vector<int> scores = allScores[i][j];
 			nmatches(i,j) = scores.size();
 
 			if (scores.empty())
 			{
-				g_mp(i,j) = 0;
-				g_mc(i,j) = 0;
+				mp(i,j) = 0;
+				mc(i,j) = 0;
 				divgs(i,j) = 0;
 			}
 			else
 			{
-				real mean = 0;
+				double mean = 0;
 				for (int k=0; k<scores.size(); ++k)
-					mean += (real)scores[k] / (real)scores.size();
+					mean += (double)scores[k] / (double)scores.size();
 
-				real divg;
+				double divg;
 				if (scores.size() <= 1)
 				{
 					divg = DIVG_DEFAULT;
@@ -234,52 +259,53 @@ int main(int argc, char *argv[])
 				}
 
 				divgs(i,j) = divg;
-				g_mp(i,j) = mean;
-				g_mc(i,j) = log(scores.size()+1) / divg; // +1 to avoid log(1)==0
+				mp(i,j) = mean;
+				mc(i,j) = log(scores.size()+1) / divg; // +1 to avoid log(1)==0
 			}
 		}
 	}
 
 	// Start calculating player scores
-	Vec pp(g_nplayers, 0.0); // Player points
-	Vec pc(g_nplayers, 1.0); // Player certainty
-	NormalizePlayerCertainty(pc);
+	Vec pp(players.size(), 0.0); // Player points
+	Vec pc(players.size(), 1.0); // Player certainty
+	Updater::NormalizePlayerCertainty(pc);
 
 	const int ITERS = 30;
 
+	Updater u(mp, mc);
 	for (int i=1; i<=ITERS; ++i)
 	{
-		Vec pp2 = UpdatePlayerScores(pp, pc);
-		Vec pc2 = UpdatePlayerCertainty(pp, pc);
+		Vec pp2 = u.UpdatePlayerScores(pp, pc);
+		Vec pc2 = u.UpdatePlayerCertainty(pp, pc);
 
 		pp = pp2;
 		pc = pc2;
 
 		if (i%5==0)
 		{
-			cout << "Scores after " << setw(2) << i << " iterations: "; Print(pp); cout << endl;
+			cout << "Scores after " << setw(2) << i << " iterations: "; Printer::Print(pp); cout << endl;
 		}
 	}
 
 	cout << "(Make sure the above numbers converge)" << endl;
 
-	Vec lowerBound(g_nplayers);
-	for (int i=0; i<g_nplayers; ++i)
-		lowerBound[i] = pp[i] - 1/(pc[i]*g_nplayers); // Very arbitarily choosen at the moment
+	Vec lowerBound(players.size());
+	for (int i=0; i<players.size(); ++i)
+		lowerBound[i] = pp[i] - 1/(pc[i]*players.size()); // Very arbitarily choosen at the moment
 
-	vector<int> ranking(g_nplayers);
-	for (int i=0; i<g_nplayers; ++i)
+	vector<int> ranking(players.size());
+	for (int i=0; i<players.size(); ++i)
 		ranking[i] = i;
 	std::sort(ranking.begin(), ranking.end(), RankComp(pp));
 
 	std::ofstream ofs;
 	ofs.open("data/stats");
-	ofs << string(g_maxNameLength+2-4, ' ') << "Name                Rank           Certainty" << endl;
-	for (int i=0; i<g_nplayers; ++i)
+	ofs << string(players.getMaxNameLength()+2-4, ' ') << "Name                Rank           Certainty" << endl;
+	for (int i=0; i<players.size(); ++i)
 	{
 		int n = ranking[i];
-		ofs.width(g_maxNameLength+2);
-		ofs << g_IDToName[n] ;
+		ofs.width(players.getMaxNameLength()+2);
+		ofs << players.getName(n) ;
 		ofs.width(20);
 		ofs << pp[n];
 		ofs.width(20);
@@ -290,28 +316,28 @@ int main(int argc, char *argv[])
 	cout << endl;
 
 	cout << "Mean match points: (column beats row with an average of how many points)" << endl;
-	g_mp.Print();
+	Printer::Print(players, mp);
 	cout << endl;
 
 	cout << "Number of matches:" << endl;
-	nmatches.Print();
+	Printer::Print(players, nmatches);
 	cout << endl;
 
 	cout << "Divergence in match results:" << endl;
-	divgs.Print();
+	Printer::Print(players, divgs);
 	cout << endl;
 
 	cout << "Certainty: (how much can we trust the mean match points)" << endl;
-	g_mc.Print();
+	Printer::Print(players, mc);
 	cout << endl;
 
 	cout << endl;
-	cout << string(g_maxNameLength+2-4, ' ') << "### Leaderboard ###" << endl;
+	cout << string(players.getMaxNameLength()+2-4, ' ') << "### Leaderboard ###" << endl;
 	cout << endl;
-	cout << "  #" << string(g_maxNameLength+2-4, ' ') << "Name    Rank   Certainty" << endl;
-	for (int i=0; i<g_nplayers; ++i)
+	cout << "  #" << string(players.getMaxNameLength()+2-4, ' ') << "Name    Rank   Certainty" << endl;
+	for (int i=0; i<players.size(); ++i)
 	{
 		int n = ranking[i];
-		cout << setw(3) << i+1 << setw(g_maxNameLength+2) << g_IDToName[n] << setw(8) << setprecision(2) << pp[n] << setw(12) << pc[n] << endl;
+		cout << setw(3) << i+1 << setw(players.getMaxNameLength()+2) << players.getName(n) << setw(8) << setprecision(2) << pp[n] << setw(12) << pc[n] << endl;
 	}
 }
