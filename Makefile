@@ -1,6 +1,5 @@
 FairRank: FairRank.cpp
-# TODO: change to "clang++ -O3 -pedantic-errors -Werror -Weverything -std=c++11 -Wno-c++98-compat FairRank.cpp -o FairRank"
-	clang++ -O3 -pedantic-errors -Wall -std=c++11 -Wno-c++98-compat FairRank.cpp -o FairRank
+	clang++ -O3 -pedantic-errors -Werror -Weverything -std=c++11 -Wno-c++98-compat FairRank.cpp -o FairRank
 run: FairRank data/results
 	@./FairRank
 data/results:
