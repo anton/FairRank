@@ -171,6 +171,175 @@ class RankComp
 	Vec m_scores;
 };
 
+typedef map<size_t, map<size_t, vector<int>>> scores;
+
+class FairRank
+{
+      public:
+	FairRank(Players &p, scores &s) : players(p), allScores(s)
+	{
+		generateMatrices();
+		calculateScores();
+		calculateRanking();
+	}
+
+	void printToFile()
+	{
+		std::ofstream ofs;
+		ofs.open("data/stats");
+		ofs << string(players.getMaxNameLength() + 2 - 4, ' ') << "Name                Rank           Certainty"
+		    << endl;
+		for (size_t i = 0; i < players.size(); ++i)
+		{
+			size_t n = ranking[i];
+			ofs.width(static_cast<int>(players.getMaxNameLength() + 2));
+			ofs << players.getName(n);
+			ofs.width(20);
+			ofs << pp[n];
+			ofs.width(20);
+			ofs << pc[n] << endl;
+		}
+		ofs.close();
+	}
+
+	void printToCout()
+	{
+		cout << endl;
+
+		cout << "Mean match points: (column beats row with an average of how many points)" << endl;
+		Printer::Print(players, mp);
+		cout << endl;
+
+		cout << "Number of matches:" << endl;
+		Printer::Print(players, nmatches);
+		cout << endl;
+
+		cout << "Divergence in match results:" << endl;
+		Printer::Print(players, divgs);
+		cout << endl;
+
+		cout << "Certainty: (how much can we trust the mean match points)" << endl;
+		Printer::Print(players, mc);
+		cout << endl;
+
+		cout << endl;
+		cout << string(players.getMaxNameLength() + 2 - 4, ' ') << "### Leaderboard ###" << endl;
+		cout << endl;
+		cout << "  #" << string(players.getMaxNameLength() + 2 - 4, ' ') << "Name    Rank   Certainty" << endl;
+		for (size_t i = 0; i < players.size(); ++i)
+		{
+			size_t n = ranking[i];
+			cout << setw(3) << i + 1 << setw(static_cast<int>(players.getMaxNameLength() + 2))
+			     << players.getName(n) << setw(8) << setprecision(2) << pp[n] << setw(12) << pc[n] << endl;
+		}
+	}
+
+      private:
+	Players &players;
+	scores &allScores;
+	const double DIVG_DEFAULT = 5;
+	const double DIVG_MIN = 1;
+	Mat nmatches;
+	Mat divgs;
+	Mat mp; // Player skill difference based on average match performance mano-e-mano
+	Mat mc; // The certainty of the above
+	Vec pp; // Player points
+	Vec pc; // Player certainty
+	vector<size_t> ranking;
+
+	void generateMatrices()
+	{
+		nmatches = Mat(players.size(), players.size());
+		divgs = Mat(players.size(), players.size());
+		mp = Mat(players.size(), players.size());
+		mc = Mat(players.size(), players.size());
+
+		for (size_t i = 0; i < players.size(); ++i)
+		{
+			for (size_t j = 0; j < players.size(); ++j)
+			{
+				vector<int> scores = allScores[i][j];
+				nmatches(i, j) = scores.size();
+
+				if (scores.empty())
+				{
+					mp(i, j) = 0;
+					mc(i, j) = 0;
+					divgs(i, j) = 0;
+				}
+				else
+				{
+					double mean = 0;
+					for (size_t k = 0; k < scores.size(); ++k)
+						mean +=
+						    static_cast<double>(scores[k]) / static_cast<double>(scores.size());
+
+					double divg;
+					if (scores.size() <= 1)
+					{
+						divg = DIVG_DEFAULT;
+					}
+					else
+					{
+						divg = 0;
+						for (size_t k = 0; k < scores.size(); ++k)
+							divg += sqr(scores[k] - mean) / (scores.size() - 1);
+
+						divg = sqrt(divg);
+
+						divg = std::max(divg, DIVG_MIN);
+					}
+
+					divgs(i, j) = divg;
+					mp(i, j) = mean;
+					mc(i, j) = log(scores.size() + 1) / divg; // +1 to avoid log(1)==0
+				}
+			}
+		}
+	}
+
+	void calculateScores()
+	{
+		// Start calculating player scores
+		pp = Vec(players.size(), 0.0); // Player points
+		pc = Vec(players.size(), 1.0); // Player certainty
+		Updater::NormalizePlayerCertainty(pc);
+
+		const int ITERS = 30;
+
+		Updater u(mp, mc);
+		for (int i = 1; i <= ITERS; ++i)
+		{
+			Vec pp2 = u.UpdatePlayerScores(pp, pc);
+			Vec pc2 = u.UpdatePlayerCertainty(pp, pc);
+
+			pp = pp2;
+			pc = pc2;
+
+			if (i % 5 == 0)
+			{
+				cout << "Scores after " << setw(2) << i << " iterations: ";
+				Printer::Print(pp);
+				cout << endl;
+			}
+		}
+
+		cout << "(Make sure the above numbers converge)" << endl;
+	}
+
+	void calculateRanking()
+	{
+		Vec lowerBound(players.size());
+		for (size_t i = 0; i < players.size(); ++i)
+			lowerBound[i] = pp[i] - 1 / (pc[i] * players.size()); // Very arbitarily choosen at the moment
+
+		ranking = vector<size_t>(players.size());
+		for (size_t i = 0; i < players.size(); ++i)
+			ranking[i] = i;
+		std::sort(ranking.begin(), ranking.end(), RankComp(pp));
+	}
+};
+
 int main()
 {
 	// Read input
@@ -181,14 +350,8 @@ int main()
 		exit(1);
 	}
 
-	map<size_t, map<size_t, vector<int>>> allScores;
-
-	const double DIVG_DEFAULT = 5;
-	const double DIVG_MIN = 1;
-
+	scores allScores;
 	Players players;
-	Mat mp; // Player skill difference based on average match performance mano-e-mano
-	Mat mc; // The certainty of the above
 
 	for (;;)
 	{
@@ -217,130 +380,7 @@ int main()
 		allScores[id2][id1].push_back(-scoreDiff);
 	}
 
-	Mat nmatches(players.size(), players.size());
-	Mat divgs(players.size(), players.size());
-	mp = Mat(players.size(), players.size());
-	mc = Mat(players.size(), players.size());
-
-	for (size_t i = 0; i < players.size(); ++i)
-	{
-		for (size_t j = 0; j < players.size(); ++j)
-		{
-			vector<int> scores = allScores[i][j];
-			nmatches(i, j) = scores.size();
-
-			if (scores.empty())
-			{
-				mp(i, j) = 0;
-				mc(i, j) = 0;
-				divgs(i, j) = 0;
-			}
-			else
-			{
-				double mean = 0;
-				for (size_t k = 0; k < scores.size(); ++k)
-					mean += static_cast<double>(scores[k]) / static_cast<double>(scores.size());
-
-				double divg;
-				if (scores.size() <= 1)
-				{
-					divg = DIVG_DEFAULT;
-				}
-				else
-				{
-					divg = 0;
-					for (size_t k = 0; k < scores.size(); ++k)
-						divg += sqr(scores[k] - mean) / (scores.size() - 1);
-
-					divg = sqrt(divg);
-
-					divg = std::max(divg, DIVG_MIN);
-				}
-
-				divgs(i, j) = divg;
-				mp(i, j) = mean;
-				mc(i, j) = log(scores.size() + 1) / divg; // +1 to avoid log(1)==0
-			}
-		}
-	}
-
-	// Start calculating player scores
-	Vec pp(players.size(), 0.0); // Player points
-	Vec pc(players.size(), 1.0); // Player certainty
-	Updater::NormalizePlayerCertainty(pc);
-
-	const int ITERS = 30;
-
-	Updater u(mp, mc);
-	for (int i = 1; i <= ITERS; ++i)
-	{
-		Vec pp2 = u.UpdatePlayerScores(pp, pc);
-		Vec pc2 = u.UpdatePlayerCertainty(pp, pc);
-
-		pp = pp2;
-		pc = pc2;
-
-		if (i % 5 == 0)
-		{
-			cout << "Scores after " << setw(2) << i << " iterations: ";
-			Printer::Print(pp);
-			cout << endl;
-		}
-	}
-
-	cout << "(Make sure the above numbers converge)" << endl;
-
-	Vec lowerBound(players.size());
-	for (size_t i = 0; i < players.size(); ++i)
-		lowerBound[i] = pp[i] - 1 / (pc[i] * players.size()); // Very arbitarily choosen at the moment
-
-	vector<size_t> ranking(players.size());
-	for (size_t i = 0; i < players.size(); ++i)
-		ranking[i] = i;
-	std::sort(ranking.begin(), ranking.end(), RankComp(pp));
-
-	std::ofstream ofs;
-	ofs.open("data/stats");
-	ofs << string(players.getMaxNameLength() + 2 - 4, ' ') << "Name                Rank           Certainty"
-	    << endl;
-	for (size_t i = 0; i < players.size(); ++i)
-	{
-		size_t n = ranking[i];
-		ofs.width(static_cast<int>(players.getMaxNameLength() + 2));
-		ofs << players.getName(n);
-		ofs.width(20);
-		ofs << pp[n];
-		ofs.width(20);
-		ofs << pc[n] << endl;
-	}
-	ofs.close();
-
-	cout << endl;
-
-	cout << "Mean match points: (column beats row with an average of how many points)" << endl;
-	Printer::Print(players, mp);
-	cout << endl;
-
-	cout << "Number of matches:" << endl;
-	Printer::Print(players, nmatches);
-	cout << endl;
-
-	cout << "Divergence in match results:" << endl;
-	Printer::Print(players, divgs);
-	cout << endl;
-
-	cout << "Certainty: (how much can we trust the mean match points)" << endl;
-	Printer::Print(players, mc);
-	cout << endl;
-
-	cout << endl;
-	cout << string(players.getMaxNameLength() + 2 - 4, ' ') << "### Leaderboard ###" << endl;
-	cout << endl;
-	cout << "  #" << string(players.getMaxNameLength() + 2 - 4, ' ') << "Name    Rank   Certainty" << endl;
-	for (size_t i = 0; i < players.size(); ++i)
-	{
-		size_t n = ranking[i];
-		cout << setw(3) << i + 1 << setw(static_cast<int>(players.getMaxNameLength() + 2)) << players.getName(n)
-		     << setw(8) << setprecision(2) << pp[n] << setw(12) << pc[n] << endl;
-	}
+	FairRank fairRank(players, allScores);
+	fairRank.printToFile();
+	fairRank.printToCout();
 }
