@@ -8,6 +8,9 @@
 #include <map>
 #include <sstream>
 #include <vector>
+#include <cstring>
+
+#include "fairrank.h"
 
 using std::endl;
 using std::cout;
@@ -183,6 +186,21 @@ class FairRank
 		calculateRanking();
 	}
 
+	struct fairrank_output *stats(size_t *fr_output_len)
+	{
+		struct fairrank_output *fr_output = nullptr;
+		for (size_t i = 0; i < players.size(); ++i)
+		{
+			size_t n = ranking[i];
+			++(*fr_output_len);
+			fr_output = static_cast<struct fairrank_output *>(realloc(fr_output, *fr_output_len * sizeof(struct fairrank_output)));
+			strncpy(&(fr_output[*fr_output_len - 1].name)[0], players.getName(n).c_str(), 255);
+			fr_output[*fr_output_len - 1].points = pp[n];
+			fr_output[*fr_output_len - 1].certainty = pc[n];
+		}
+		return fr_output;
+	}
+
 	void printToFile()
 	{
 		std::ofstream ofs;
@@ -316,15 +334,16 @@ class FairRank
 			pp = pp2;
 			pc = pc2;
 
+#ifdef TEST
 			if (i % 5 == 0)
 			{
 				cout << "Scores after " << setw(2) << i << " iterations: ";
 				Printer::Print(pp);
 				cout << endl;
+				cout << "(Make sure these numbers converge)" << endl;
 			}
+#endif /* TEST */
 		}
-
-		cout << "(Make sure the above numbers converge)" << endl;
 	}
 
 	void calculateRanking()
@@ -340,6 +359,27 @@ class FairRank
 	}
 };
 
+void fairrank_compute(struct fairrank_input *fr_input, size_t fr_input_len,
+		      struct fairrank_output **fr_output, size_t *fr_output_len)
+{
+	scores allScores;
+	Players players;
+
+	for (size_t i=0; i<fr_input_len; ++i)
+	{
+		size_t id1 = players.getNameID(fr_input[i].home);
+		size_t id2 = players.getNameID(fr_input[i].away);
+		int scoreDiff = fr_input[i].home_score - fr_input[i].away_score;
+
+		allScores[id1][id2].push_back(+scoreDiff);
+		allScores[id2][id1].push_back(-scoreDiff);
+	}
+
+	FairRank fairRank(players, allScores);
+	*fr_output = fairRank.stats(fr_output_len);
+}
+
+#ifdef TEST
 int main()
 {
 	// Read input
@@ -384,3 +424,4 @@ int main()
 	fairRank.printToFile();
 	fairRank.printToCout();
 }
+#endif /* TEST */

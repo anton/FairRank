@@ -1,5 +1,10 @@
 FairRank: FairRank.cpp
-	clang++ -O3 -pedantic-errors -Werror -Weverything -std=c++11 -Wno-c++98-compat FairRank.cpp -o FairRank
+	clang++ -O3 -pedantic-errors -Werror -Weverything -std=c++11 -Wno-c++98-compat FairRank.cpp -DTEST -o FairRank
+FairRank.o: FairRank.cpp
+	clang++ -c -O0 -pedantic-errors -Werror -Weverything -std=c++11 -Wno-c++98-compat FairRank.cpp -o FairRank.o
+test: test.c FairRank.o
+	clang++ -c test.c -o test.o
+	clang++ FairRank.o test.o -o test
 run: FairRank data/results
 	@./FairRank
 data/results:
