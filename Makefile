@@ -12,11 +12,11 @@ FairRank.o: FairRank.cpp
 libfairrank.so: FairRank.o fairrank.h
 	$(CXX) $(CXXFLAGS) -shared -lc -o $@ FairRank.o
 
-testrun: test
-	LD_LIBRARY_PATH=./ ./test
+samplerun: sample
+	LD_LIBRARY_PATH=./ ./sample
 
-test: test.c libfairrank.so
-	$(CC) $(CFLAGS) test.c -o $@ -L. -lfairrank
+sample: sample.c libfairrank.so
+	$(CC) $(CFLAGS) sample.c -o $@ -L. -lfairrank
 
 run: FairRank data/results
 	@./FairRank
@@ -30,6 +30,6 @@ data/results:
 	@echo Sample results generated to data/results
 
 clean:
-	@rm -f FairRank test *.o *.so
+	@rm -f FairRank sample *.o *.so
 
-.PHONY: clean run testrun
+.PHONY: clean run samplerun

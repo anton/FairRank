@@ -43,3 +43,7 @@ Statistics
 When running FairRank statistics will be presented on Standard Output, but also
 a file ``data/stats`` will be written that contains the current leaderboard.
 
+Dynamic library
+---------------
+
+See [sample.c](sample.c) for an example of how to use libfairrank.so.

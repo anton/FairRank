@@ -2,5 +2,5 @@ FairRank
 data/*
 .*.swp
 *.o
-test
+sample
 libfairrank.so
